@@ -24,6 +24,7 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
         self._timer.timeout.connect(self._queryFrame)
         self._timer.setInterval(30)
 
+    # 按钮操作函数 打开和关闭摄像头
     def btnOpenCamera_Clicked(self):
         '''
         打开和关闭摄像头
@@ -38,6 +39,7 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
             self.labelCamera.setText("摄像头")
             self._timer.stop()
 
+    # 按钮操作函数 捕获摄像头图片
     def btnCapture_Clicked(self):
         '''
         捕获图片
@@ -48,6 +50,11 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
 
         self.captured = self.frame
 
+        self.Gray = cv.cvtColor(self.captured,cv.COLOR_RGB2GRAY)
+
+
+
+
         # 后面这几行代码几乎都一样，可以尝试封装成一个函数
         rows, cols, channels = self.captured.shape
         bytesPerLine = channels * cols
@@ -56,6 +63,7 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
         self.labelCapture.setPixmap(QPixmap.fromImage(QImg).scaled(
             self.labelCapture.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
+    # 按钮操作函数 从本地读取图片
     def btnReadImage_Clicked(self):
         '''
         从本地读取图片
@@ -66,6 +74,8 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
             self.captured = cv.imread(str(filename))
             # OpenCV图像以BGR通道存储，显示时需要从BGR转到RGB
             self.captured = cv.cvtColor(self.captured, cv.COLOR_BGR2RGB)
+
+            self.Gray = cv.cvtColor(self.captured, cv.COLOR_RGB2GRAY)##
 
             rows, cols, channels = self.captured.shape
             bytesPerLine = channels * cols
@@ -90,7 +100,7 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
         # self.equalize = clahe.apply(self.cpatured)
 
         # ycrcb = cv.cvtColor(self.captured, cv.COLOR_BGR2RGB)
-        r , g, b = cv.split(self.captured)
+        r, g, b = cv.split(self.captured)
         #R,G,B = cv.split(ycrcb)
 
 
@@ -117,28 +127,7 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
         self.labelResult.setPixmap(QPixmap.fromImage(QImg).scaled(
             self.labelResult.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
-    def btnThreshold_Clicked(self):
-        '''
-        执行程序
-        '''
-        if not hasattr(self, "captured"):
-            return
-
-        # _, self.cpatured = cv.threshold(
-        #     self.cpatured, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
-
-        self.crcb_range_sceening()
-        self.morphology()
-        self.region()
-        self.selectskin()
-        self.signskin()
-
-        rows, cols, channels = self.result.shape
-        bytesPerLine = channels * cols
-        QImg = QImage(self.captured.data, cols, rows, bytesPerLine, QImage.Format_RGB888)
-        self.labelResult.setPixmap(QPixmap.fromImage(QImg).scaled(
-            self.labelResult.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
-
+    # 肤色分割人脸
     def crcb_range_sceening(self):
         """
         # :param image: 图片路径
@@ -158,11 +147,13 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
                 else:
                     self.skin[i][j] = 0
 
-    def morphology(self):  # 形态学操作
+    # 形态学操作
+    def morphology(self):
         k = np.ones((3, 3), np.uint8)
         self.open = cv.morphologyEx(self.skin, cv.MORPH_OPEN, k)  # 开运算
         self.close = cv.morphologyEx(self.open, cv.MORPH_CLOSE, k)  # 闭运算
 
+    # 连通域分析
     def region(self):
         # 连通域分析
         num_labels, labels, self.stats, centroids = cv.connectedComponentsWithStats(self.close, connectivity=8)
@@ -189,6 +180,7 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
         # cv2.waitKey()
         # cv2.destroyAllWindows()
 
+    # 判断人脸连通域
     def selectskin(self):
         num = len(self.stats)
         size_total = self.captured.shape[1] * self.captured.shape[0]
@@ -204,6 +196,7 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
             else:
                 continue
 
+    # 对人脸连通域画框
     def signskin(self):
         if self.tips:
             self.result = self.captured
@@ -217,6 +210,18 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
             box = QtWidgets.QMessageBox()
             box.warning(self, "提示", "Dont find face")
             print("Dont find face")
+
+
+    # def cutface(self):
+    #     self.
+
+    # 定位人眼并画框
+    def findeyes(self):
+        eyes = cv.CascadeClassifier("haarcascades/haarcascade_eye.xml")
+        self.xxx = eyes.detectMultiScale(self.Gray,1.3,5)
+        for (x,y,w,h) in self.xxx:
+            self.result = cv.rectangle(self.captured,(x,y),(x+w,y+h),(255,0,0),2)
+
 
     @QtCore.pyqtSlot()
     def _queryFrame(self):
@@ -233,4 +238,25 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
         self.labelCamera.setPixmap(QPixmap.fromImage(QImg).scaled(
             self.labelCamera.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
+    def btnThreshold_Clicked(self):
+        '''
+        执行程序
+        '''
+        if not hasattr(self, "captured"):
+            return
 
+        # _, self.cpatured = cv.threshold(
+        #     self.cpatured, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+
+        self.crcb_range_sceening()
+        self.morphology()
+        self.region()
+        self.selectskin()
+        # self.signskin()
+        self.findeyes()
+
+        rows, cols, channels = self.result.shape
+        bytesPerLine = channels * cols
+        QImg = QImage(self.captured.data, cols, rows, bytesPerLine, QImage.Format_RGB888)
+        self.labelResult.setPixmap(QPixmap.fromImage(QImg).scaled(
+            self.labelResult.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
