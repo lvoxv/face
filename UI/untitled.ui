@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1895</width>
-    <height>786</height>
+    <height>837</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -41,18 +41,18 @@
       <string>打开文件</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="btnGray">
+    <widget class="QPushButton" name="btnSignFace">
      <property name="text">
-      <string>灰度</string>
+      <string>人脸录入</string>
      </property>
     </widget>
-    <widget class="QPushButton" name="btnThreshold">
+    <widget class="QPushButton" name="btnRecognize">
      <property name="text">
       <string>人脸识别</string>
      </property>
     </widget>
    </widget>
-   <widget class="QWidget" name="">
+   <widget class="QWidget" name="layoutWidget">
     <property name="geometry">
      <rect>
       <x>10</x>
@@ -111,8 +111,8 @@
    <slot>btnReadImage_Clicked()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>337</x>
-     <y>348</y>
+     <x>835</x>
+     <y>716</y>
     </hint>
     <hint type="destinationlabel">
      <x>375</x>
@@ -121,14 +121,14 @@
    </hints>
   </connection>
   <connection>
-   <sender>btnGray</sender>
+   <sender>btnSignFace</sender>
    <signal>clicked()</signal>
    <receiver>MainWindow</receiver>
-   <slot>btnGray_Clicked()</slot>
+   <slot>btnSignFace_Clicked()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>454</x>
-     <y>373</y>
+     <x>952</x>
+     <y>716</y>
     </hint>
     <hint type="destinationlabel">
      <x>375</x>
@@ -143,8 +143,8 @@
    <slot>btnOpenCamera_Clicked()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>62</x>
-     <y>357</y>
+     <x>600</x>
+     <y>716</y>
     </hint>
     <hint type="destinationlabel">
      <x>67</x>
@@ -159,8 +159,8 @@
    <slot>btnCapture_Clicked()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>185</x>
-     <y>363</y>
+     <x>717</x>
+     <y>716</y>
     </hint>
     <hint type="destinationlabel">
      <x>217</x>
@@ -169,14 +169,14 @@
    </hints>
   </connection>
   <connection>
-   <sender>btnThreshold</sender>
+   <sender>btnRecognize</sender>
    <signal>clicked()</signal>
    <receiver>MainWindow</receiver>
-   <slot>btnThreshold_Clicked()</slot>
+   <slot>btnRecognize_Clicked()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>515</x>
-     <y>359</y>
+     <x>1070</x>
+     <y>716</y>
     </hint>
     <hint type="destinationlabel">
      <x>473</x>
@@ -191,5 +191,7 @@
   <slot>btnThreshold_Clicked()</slot>
   <slot>btnOpenCamera_Clicked()</slot>
   <slot>btnCapture_Clicked()</slot>
+  <slot>btnSignFace_Clicked()</slot>
+  <slot>btnRecognize_Clicked()</slot>
  </slots>
 </ui>

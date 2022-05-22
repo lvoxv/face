@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 # import time
 
-PCT = "./Photo_test/123.jpg"
+PCT = "./Photo_test/7.JPG"
 Image = cv2.imread(PCT)
 Size = Image.shape
 
@@ -135,7 +135,7 @@ def crcb_range_sceening(image):
     # print(cr.shape)
     for i in range(0, x):
         for j in range(0, y):
-            if (cr[i][j] > 140) and (cr[i][j]) < 175 and (cr[i][j] > 100) and (cb[i][j]) < 120:
+            if (cr[i][j] > 160 ): # ) and (cr[i][j]) < 173 and (cb[i][j] > 77) and (cb[i][j]) < 127:
                 skin[i][j] = 255
             else:
                 skin[i][j] = 0
