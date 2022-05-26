@@ -12,7 +12,7 @@ from tkinter import *
 import cv2
 import numpy as np
 # import time
-
+import matplotlib.pyplot as plt
 # PCT = "./Photo_test/IMG_2140.JPG"
 
 
@@ -42,3 +42,12 @@ rets = cv2.drawContours(draw_img, contours, -1, (0, 255, 0), 2)
 # 第六步：画出带有轮廓的原始图片
 cv_show(rets, 'ret')
 
+
+m,n = img.shape
+gray.
+
+fig = plt.figure()
+ax = fig.add_subplot(111)
+ax.set(xlim=[0, x], ylim=[0, y], title='An Example Axes',
+       ylabel='Y-Axis', xlabel='X-Axis')
+plt.show()

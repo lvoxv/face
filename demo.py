@@ -12,7 +12,7 @@ import cv2
 import numpy as np
 # import time
 
-PCT = "./Photo_test/7.JPG"
+PCT = "./Photo_test/222.JPG"
 Image = cv2.imread(PCT)
 Size = Image.shape
 
@@ -57,10 +57,10 @@ def region(img):
         output[:, :, 0][mask] = np.random.randint(0, 255)
         output[:, :, 1][mask] = np.random.randint(0, 255)
         output[:, :, 2][mask] = np.random.randint(0, 255)
-    # cv2.namedWindow("region", cv2.WINDOW_NORMAL)
-    # cv2.imshow('region', output)
-    # cv2.waitKey()
-    # cv2.destroyAllWindows()
+    cv2.namedWindow("region", cv2.WINDOW_NORMAL)
+    cv2.imshow('region', output)
+    cv2.waitKey()
+    cv2.destroyAllWindows()
 
     return num_labels, stats
 
@@ -135,7 +135,7 @@ def crcb_range_sceening(image):
     # print(cr.shape)
     for i in range(0, x):
         for j in range(0, y):
-            if (cr[i][j] > 160 ): # ) and (cr[i][j]) < 173 and (cb[i][j] > 77) and (cb[i][j]) < 127:
+            if (cr[i][j] > 133) and (cr[i][j]) < 173 and (cb[i][j] > 77) and (cb[i][j]) < 127:
                 skin[i][j] = 255
             else:
                 skin[i][j] = 0
@@ -159,8 +159,8 @@ def main():
     skininstats = selectskin(stats)
     # 画框
     signimg = signskin(skininstats, stats)
-    cv2.namedWindow("region", cv2.WINDOW_NORMAL)
-    cv2.imshow('region', signimg)
+    cv2.namedWindow("result", cv2.WINDOW_NORMAL)
+    cv2.imshow('result', signimg)
     cv2.waitKey()
     cv2.destroyAllWindows()
 

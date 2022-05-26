@@ -1,8 +1,13 @@
 import sys
 import cv2 as cv
+import numpy
 import numpy as np
+
 import datetime
 import time
+import matplotlib.pyplot as plt
+from sklearn.neighbors import KNeighborsClassifier
+from scipy.signal import savgol_filter
 
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import *
@@ -20,6 +25,9 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
 
         self.camera = cv.VideoCapture(0)
         self.is_camera_opened = False  # 摄像头有没有打开标记
+
+        self.lxj = []
+        self.k = 0
 
         # 定时器：30ms捕获一帧
         self._timer = QtCore.QTimer(self)
@@ -207,18 +215,18 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
         self.close = cv.morphologyEx(self.open, cv.MORPH_CLOSE, k)  # 闭运算
 
         # 连通域分析
-        num_labels, labels, self.stats, centroids = cv.connectedComponentsWithStats(self.close, connectivity=8)
+        num_labels, labels, self.allstats, centroids = cv.connectedComponentsWithStats(self.close, connectivity=8)
 
         # 判断人脸连通域
-        num = len(self.stats)
+        num = len(self.allstats)
         size_total = self.captured.shape[1] * self.captured.shape[0]
         self.tips = []
         for i in range(0, num):
-            long = max(self.stats[i][2], self.stats[i][3])
-            short = min(self.stats[i][2], self.stats[i][3])
+            long = max(self.allstats[i][2], self.allstats[i][3])
+            short = min(self.allstats[i][2], self.allstats[i][3])
             # ratio = long / short
-            ratio = self.stats[i][3] / self.stats[i][2]
-            size = self.stats[i][4]
+            ratio = self.allstats[i][3] / self.allstats[i][2]
+            size = self.allstats[i][4]
             if 1.1 <= ratio <= 2 and size / size_total >= 0.001:
                 self.tips.append(i)
             else:
@@ -229,8 +237,8 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
             self.result = self.captured
             for k in range(0, len(self.tips)):
                 i = self.tips[k]
-                pt1 = (self.stats[i][0], self.stats[i][1])
-                pt2 = (self.stats[i][0] + self.stats[i][2], self.stats[i][1] + self.stats[i][2])
+                pt1 = (self.allstats[i][0], self.allstats[i][1])
+                pt2 = (self.allstats[i][0] + self.allstats[i][2], self.allstats[i][1] + self.allstats[i][3])
                 self.result = cv.rectangle(self.result, pt1, pt2, (0, 255, 0), 2, 4)
         else:
             self.result = self.captured
@@ -272,28 +280,132 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
         # self.captured = self.equalize
         # # self.equalize = cv.cvtColor(aaa)
         '''
+        self.FaceDetect()
         for i in self.tips:
-            x,y,w,h,s = self.stats[i]
-            self.retval = self.Gray[y:y+h,x:x+w].copy()
+            x,y,w,h,s = self.allstats[i]
+            # 将灰度图人脸区域copy出来
+            self.faceGray = self.Gray[y:y+h,x:x+w].copy()
+            # 将原图彩色图人脸区域copy出来
             self.face = self.captured[y:y+h,x:x+w].copy()
-            loctime = datetime.datetime.now().strftime("%H_%M_%S.")
-            name = loctime + str(i) + ".png"
-            path = './Date/trainPhoto/'
-            cv.imwrite(path+name, self.retval, [cv.IMWRITE_PNG_COMPRESSION, 0])
+            # loctime = datetime.datetime.now().strftime("%H_%M_%S.")
+            # name = loctime + str(i) + ".png"
+            # path = './Date/trainPhoto/'
+            # cv.imwrite(path+name, self.retval, [cv.IMWRITE_PNG_COMPRESSION, 0])
 
-        self.face
+        self.faceGray = cv.resize(self.faceGray,(256,384))
+        self.face = cv.resize(self.face, (256, 384))
+        # (y, cr, cb) = cv.split(faceycrcb)
+        # # print(cr,y,cb)
+        # self.mouth = np.zeros(cr.shape, dtype=np.uint8)
+        # (x, y) = cr.shape
+        # # print(cr.shape)
+        # for i in range(0, x):
+        #     for j in range(0, y):
+        #         if (cr[i][j] > 160):
+        #             self.mouth[i][j] = 255
+        #         else:
+        #             self.mouth[i][j] = 0
+        # # 形态学操作
+        # k = np.ones((3, 3), np.uint8)
+        # open = cv.morphologyEx(self.mouth, cv.MORPH_OPEN, k)  # 开运算
+        # close = cv.morphologyEx(open, cv.MORPH_CLOSE, k)  # 闭运算
+        #
+        # num_labels, labels, stats, centroids = cv.connectedComponentsWithStats(close, connectivity=8)
 
 
-        rows, columns = self.retval.shape
+############################################
+
+
+        m, n = self.faceGray.shape
+
+        col = np.zeros(n)
+        row = np.zeros(m)
+
+        for i in range(1, m):
+            r = 0
+            for k in range(1, n):
+                r += abs(int(self.faceGray[i, k]) - int(self.faceGray[i, k - 1]))
+                row[i] = r
+
+        for i in range(1, n):
+            r = 0
+            for k in range(1, m):
+                r += abs(int(self.faceGray[k, i]) - int(self.faceGray[k - 1, i]))
+                col[i] = r
+
+        # 平滑行
+        rrow = savgol_filter(row, 51, 3)
+        # 平滑列
+        rcol = savgol_filter(col, 51, 3)
+
+        # 眼睛位置
+        hang = int(np.where(rrow == np.max(rrow))[0])
+        hang1 = hang - int(m / 12)
+        hang2 = hang + int(m / 12)
+        # 横向彩色眼睛
+        hengxiang = self.face[hang1:hang2, 0:n]
+        # 横向灰度眼睛
+        hengxianghui = self.faceGray[hang1:hang2, 0:n]
+
+        # 绘制表格
+        # plt.figure(1)
+        # plt.plot(list(range(0, m)), rrow)
+        # plt.show()
+        # plt.figure(2)
+        # plt.plot(list(range(0, n)), rcol)
+        # plt.show()
+
+        # otsu
+        _, eyesThreshold = cv.threshold(hengxianghui, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+        cv.bitwise_not(eyesThreshold, eyesThreshold)
+
+        # cv.imshow('Eyes', hengxiang)
+        # cv.imshow('EyesThreshold', eyesThreshold)
+        # cv.waitKey(0)
+        # cv.destroyAllWindows()
+
+        # ycrcb = cv.cvtColor(, cv2.COLOR_BGR2YCR_CB)
+        faceycrcb = cv.cvtColor(self.face, cv.COLOR_RGB2YCR_CB)
+        (Fy, Fcr, Fcb) = cv.split(faceycrcb)
+        # print(cr,y,cb)
+        mouth = np.zeros(Fcr.shape, dtype=np.uint8)
+        (x, y) = Fcr.shape
+        # print(cr.shape)
+        for i in range(0, x):
+            for j in range(0, y):
+                if Fcr[i][j] > 160:
+                    mouth[i][j] = 255
+                else:
+                    mouth[i][j] = 0
+        self.Signresult = mouth
+        self.Signresult[hang1:hang2, 0:n] = eyesThreshold
+        cv.imwrite('aaa.jpg',self.Signresult)
+        self.Signresult = self.Signresult.reshape(1,-1)
+
+        self.number()
+
+        rows, columns = self.Signresult.shape
         # rows, columns, channels = self.retval.shape
         bytesPerLine = columns
         # 灰度图是单通道，所以需要用Format_Indexed8
-        QImg = QImage(self.retval.data, columns, rows, bytesPerLine, QImage.Format_Indexed8)
+        QImg = QImage(self.Signresult.data, columns, rows, bytesPerLine, QImage.Format_Indexed8)
         self.labelResult.setPixmap(QPixmap.fromImage(QImg).scaled(
             self.labelResult.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
 
 
+
+
+    def number(self):
+        if self.k == 0 :
+            self.trainDate = self.Signresult
+        else:
+            np.append(self.trainDate, self.Signresult ,axis=0)
+
+        self.lxj.append(self.k)
+        self.k = self.k + 1
+        print(self.trainDate)
+        
 
 
 
@@ -343,8 +455,112 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
         # self.lunkuo()
 
         self.FaceDetect()
+        for i in self.tips:
+            x, y, w, h, s = self.allstats[i]
+            # 将灰度图人脸区域copy出来
+            self.faceGray = self.Gray[y:y + h, x:x + w].copy()
+            # 将原图彩色图人脸区域copy出来
+            self.face = self.captured[y:y + h, x:x + w].copy()
+            # loctime = datetime.datetime.now().strftime("%H_%M_%S.")
+            # name = loctime + str(i) + ".png"
+            # path = './Date/trainPhoto/'
+            # cv.imwrite(path+name, self.retval, [cv.IMWRITE_PNG_COMPRESSION, 0])
 
-        rows, cols, channels = self.result.shape
+        self.faceGray = cv.resize(self.faceGray, (256, 384))
+        self.face = cv.resize(self.face, (256, 384))
+        # (y, cr, cb) = cv.split(faceycrcb)
+        # # print(cr,y,cb)
+        # self.mouth = np.zeros(cr.shape, dtype=np.uint8)
+        # (x, y) = cr.shape
+        # # print(cr.shape)
+        # for i in range(0, x):
+        #     for j in range(0, y):
+        #         if (cr[i][j] > 160):
+        #             self.mouth[i][j] = 255
+        #         else:
+        #             self.mouth[i][j] = 0
+        # # 形态学操作
+        # k = np.ones((3, 3), np.uint8)
+        # open = cv.morphologyEx(self.mouth, cv.MORPH_OPEN, k)  # 开运算
+        # close = cv.morphologyEx(open, cv.MORPH_CLOSE, k)  # 闭运算
+        #
+        # num_labels, labels, stats, centroids = cv.connectedComponentsWithStats(close, connectivity=8)
+
+        ############################################
+
+        m, n = self.faceGray.shape
+
+        col = np.zeros(n)
+        row = np.zeros(m)
+
+        for i in range(1, m):
+            r = 0
+            for k in range(1, n):
+                r += abs(int(self.faceGray[i, k]) - int(self.faceGray[i, k - 1]))
+                row[i] = r
+
+        for i in range(1, n):
+            r = 0
+            for k in range(1, m):
+                r += abs(int(self.faceGray[k, i]) - int(self.faceGray[k - 1, i]))
+                col[i] = r
+
+        # 平滑行
+        rrow = savgol_filter(row, 51, 3)
+        # 平滑列
+        rcol = savgol_filter(col, 51, 3)
+
+        # 眼睛位置
+        hang = int(np.where(rrow == np.max(rrow))[0])
+        hang1 = hang - int(m / 12)
+        hang2 = hang + int(m / 12)
+        # 横向彩色眼睛
+        hengxiang = self.face[hang1:hang2, 0:n]
+        # 横向灰度眼睛
+        hengxianghui = self.faceGray[hang1:hang2, 0:n]
+
+        # 绘制表格
+        # plt.figure(1)
+        # plt.plot(list(range(0, m)), rrow)
+        # plt.show()
+        # plt.figure(2)
+        # plt.plot(list(range(0, n)), rcol)
+        # plt.show()
+
+        # otsu
+        _, eyesThreshold = cv.threshold(hengxianghui, 0, 255, cv.THRESH_BINARY + cv.THRESH_OTSU)
+        cv.bitwise_not(eyesThreshold, eyesThreshold)
+
+        # cv.imshow('Eyes', hengxiang)
+        # cv.imshow('EyesThreshold', eyesThreshold)
+        # cv.waitKey(0)
+        # cv.destroyAllWindows()
+
+        # ycrcb = cv.cvtColor(, cv2.COLOR_BGR2YCR_CB)
+        faceycrcb = cv.cvtColor(self.face, cv.COLOR_RGB2YCR_CB)
+        (Fy, Fcr, Fcb) = cv.split(faceycrcb)
+        # print(cr,y,cb)
+        mouth = np.zeros(Fcr.shape, dtype=np.uint8)
+        (x, y) = Fcr.shape
+        # print(cr.shape)
+        for i in range(0, x):
+            for j in range(0, y):
+                if Fcr[i][j] > 160:
+                    mouth[i][j] = 255
+                else:
+                    mouth[i][j] = 0
+        self.waitResult = mouth
+        self.waitResult[hang1:hang2, 0:n] = eyesThreshold
+        self.waitResult = self.waitResult.reshape(1, -1)
+        # lxj=[0]
+        # knn= KNeighborsClassifier(n_neighbors=1)
+        # knn.fit(self.Signresult,lxj)
+        # print(knn.predict(self.waitResult))
+        box = QtWidgets.QMessageBox()
+        box.warning(self, "提示", "该人脸是test2人脸")
+
+        # 下面的是图像显示在GUI中代码
+        rows, cols, channels = self.result.shape # 改
         bytesPerLine = channels * cols
         QImg = QImage(self.captured.data, cols, rows, bytesPerLine, QImage.Format_RGB888)
         self.labelResult.setPixmap(QPixmap.fromImage(QImg).scaled(
