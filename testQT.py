@@ -14,11 +14,12 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import QFileDialog, QMainWindow
 
-from UI.untitled import Ui_MainWindow
+from UI.untitledtest import Ui_MainWindow
 
 
 
 class PyQtMainEntry(QMainWindow, Ui_MainWindow):
+
     def __init__(self):
         super().__init__()
         self.setupUi(self)
@@ -26,8 +27,8 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
         self.camera = cv.VideoCapture(0)
         self.is_camera_opened = False  # 摄像头有没有打开标记
 
-        self.lxj = []
-        self.k = 0
+        self.trainDate = []
+        self.lable = []
 
         # 定时器：30ms捕获一帧
         self._timer = QtCore.QTimer(self)
@@ -377,34 +378,29 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
                     mouth[i][j] = 255
                 else:
                     mouth[i][j] = 0
-        self.Signresult = mouth
-        self.Signresult[hang1:hang2, 0:n] = eyesThreshold
-        cv.imwrite('aaa.jpg',self.Signresult)
-        self.Signresult = self.Signresult.reshape(1,-1)
+        self.Signresultold = mouth
+        self.Signresultold[hang1:hang2, 0:n] = eyesThreshold
+        # cv.imwrite('aaa.jpg',self.Signresult)
+        self.Signresult = self.Signresultold.reshape(1,-1)
+        self.Signresultlist = self.Signresult.tolist()
 
-        self.number()
+        self.trainDate.append(self.Signresultlist[0])
 
-        rows, columns = self.Signresult.shape
+        lab = str(self.lineEdit.text())
+        self.lable.append(lab)
+        # print(self.lable)
+
+        rows, columns = self.Signresultold.shape
         # rows, columns, channels = self.retval.shape
         bytesPerLine = columns
         # 灰度图是单通道，所以需要用Format_Indexed8
-        QImg = QImage(self.Signresult.data, columns, rows, bytesPerLine, QImage.Format_Indexed8)
+        QImg = QImage(self.Signresultold.data, columns, rows, bytesPerLine, QImage.Format_Indexed8)
         self.labelResult.setPixmap(QPixmap.fromImage(QImg).scaled(
             self.labelResult.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
 
 
 
 
-
-    def number(self):
-        if self.k == 0 :
-            self.trainDate = self.Signresult
-        else:
-            np.append(self.trainDate, self.Signresult ,axis=0)
-
-        self.lxj.append(self.k)
-        self.k = self.k + 1
-        print(self.trainDate)
         
 
 
@@ -552,12 +548,14 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
         self.waitResult = mouth
         self.waitResult[hang1:hang2, 0:n] = eyesThreshold
         self.waitResult = self.waitResult.reshape(1, -1)
-        # lxj=[0]
-        # knn= KNeighborsClassifier(n_neighbors=1)
-        # knn.fit(self.Signresult,lxj)
+
+        knn = KNeighborsClassifier(n_neighbors=1)
+        knn.fit(self.trainDate,self.lable)
+        pRe = knn.predict(self.waitResult)
         # print(knn.predict(self.waitResult))
         box = QtWidgets.QMessageBox()
-        box.warning(self, "提示", "该人脸是test2人脸")
+        msg = "该人脸是" + pRe[0] + "的人脸"
+        box.warning(self, "提示", msg)
 
         # 下面的是图像显示在GUI中代码
         rows, cols, channels = self.result.shape # 改
@@ -565,3 +563,4 @@ class PyQtMainEntry(QMainWindow, Ui_MainWindow):
         QImg = QImage(self.captured.data, cols, rows, bytesPerLine, QImage.Format_RGB888)
         self.labelResult.setPixmap(QPixmap.fromImage(QImg).scaled(
             self.labelResult.size(), Qt.KeepAspectRatio, Qt.SmoothTransformation))
+
